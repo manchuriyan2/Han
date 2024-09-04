@@ -280,6 +280,9 @@ if len(BASE_URL) == 0:
     warning("BASE_URL not provided!")
     BASE_URL = ""
 
+BASE_URL_PORT = environ.get('BASE_URL_PORT', '')
+BASE_URL_PORT = 80 if len(BASE_URL_PORT) == 0 else int(BASE_URL_PORT)
+
 UPSTREAM_REPO = environ.get("UPSTREAM_REPO", "")
 if len(UPSTREAM_REPO) == 0:
     UPSTREAM_REPO = ""
@@ -345,6 +348,7 @@ TOKEN_TIMEOUT = int(TOKEN_TIMEOUT) if TOKEN_TIMEOUT.isdigit() else ""
 config_dict = {
     "AS_DOCUMENT": AS_DOCUMENT,
     "BASE_URL": BASE_URL,
+    "BASE_URL_PORT": BASE_URL_PORT,
     "BOT_TOKEN": BOT_TOKEN,
     "BOT_MAX_TASKS": BOT_MAX_TASKS,
     "CMD_SUFFIX": CMD_SUFFIX,

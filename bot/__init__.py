@@ -280,9 +280,6 @@ if len(BASE_URL) == 0:
     warning("BASE_URL not provided!")
     BASE_URL = ""
 
-BASE_URL_PORT = environ.get('BASE_URL_PORT', '')
-BASE_URL_PORT = 80 if len(BASE_URL_PORT) == 0 else int(BASE_URL_PORT)
-
 UPSTREAM_REPO = environ.get("UPSTREAM_REPO", "")
 if len(UPSTREAM_REPO) == 0:
     UPSTREAM_REPO = ""
@@ -435,6 +432,30 @@ if ospath.exists("shorteners.txt"):
             if len(temp) == 2:
                 shorteners_list.append({"domain": temp[0], "api_key": temp[1]})
 
+import os
+import subprocess
+from subprocess import Popen, check_output
+from threading import Thread
+from time import sleep
+from some_module import ariaAPI, qbClient, tgClient, AsyncIOScheduler
+from pytz import timezone, get_localzone
+
+# Define srun
+def srun(cmd, check=True):
+    try:
+        result = subprocess.run(cmd, shell=True, check=check, capture_output=True, text=True)
+        print(f"Command output: {result.stdout}")
+        if result.stderr:
+            print(f"Command error output: {result.stderr}")
+        return result
+    except subprocess.CalledProcessError as e:
+        print(f"Command failed with exit code {e.returncode}")
+        print(f"Error output: {e.stderr}")
+        raise
+
+BASE_URL_PORT = environ.get('BASE_URL_PORT', '')
+BASE_URL_PORT = 80 if len(BASE_URL_PORT) == 0 else int(BASE_URL_PORT)
+
 if BASE_URL:
     Popen(
         f"gunicorn web.wserver:app --bind 0.0.0.0:{BASE_URL_PORT} --worker-class gevent",
@@ -442,7 +463,8 @@ if BASE_URL:
     )
 
 srun(["xnox", "-d", "--profile=."], check=False)
-if not ospath.exists(".netrc"):
+
+if not os.path.exists(".netrc"):
     with open(".netrc", "w"):
         pass
 srun(["chmod", "600", ".netrc"], check=False)
@@ -456,26 +478,28 @@ trackers = (
     .decode("utf-8")
     .rstrip(",")
 )
+
 with open("a2c.conf", "a+") as a:
     if TORRENT_TIMEOUT is not None:
         a.write(f"bt-stop-timeout={TORRENT_TIMEOUT}\n")
     a.write(f"bt-tracker=[{trackers}]")
+
 srun(["xria", "--conf-path=/usr/src/app/a2c.conf"], check=False)
 
-if ospath.exists("accounts.zip"):
-    if ospath.exists("accounts"):
+if os.path.exists("accounts.zip"):
+    if os.path.exists("accounts"):
         srun(["rm", "-rf", "accounts"], check=False)
     srun(
         ["7z", "x", "-o.", "-bd", "-aoa", "accounts.zip", "accounts/*.json"],
         check=False,
     )
     srun(["chmod", "-R", "777", "accounts"], check=False)
-    osremove("accounts.zip")
-if not ospath.exists("accounts"):
+    os.remove("accounts.zip")
+
+if not os.path.exists("accounts"):
     config_dict["USE_SERVICE_ACCOUNTS"] = False
 
 aria2 = ariaAPI(ariaClient(host="http://localhost", port=6800, secret=""))
-
 
 xnox_client = qbClient(
     host="localhost",
@@ -489,19 +513,17 @@ xnox_client = qbClient(
     },
 )
 
-
 def aria2c_init():
     try:
         link = "https://linuxmint.com/torrents/lmde-5-cinnamon-64bit.iso.torrent"
-        dire = "/usr/src/app/downloads/".rstrip("/")
+        dire = "/usr/src/app/downloads/"
         aria2.add_uris([link], {"dir": dire})
         sleep(3)
         downloads = aria2.get_downloads()
         sleep(10)
         aria2.remove(downloads, force=True, files=True, clean=True)
     except Exception as e:
-        error(f"Aria2c initializing error: {e}")
-
+        print(f"Aria2c initializing error: {e}")
 
 Thread(target=aria2c_init).start()
 sleep(1.5)
@@ -544,7 +566,7 @@ bot = tgClient(
     TELEGRAM_HASH,
     bot_token=BOT_TOKEN,
     workers=1000,
-    parse_mode=enums.ParseMode.HTML,
+    parse_mode="HTML",
 ).start()
 bot_loop = bot.loop
 bot_name = bot.me.username
